@@ -40,7 +40,27 @@ class Job:
         return f"{norm(self.company)}|{norm(self.title)}"
 
 
+# UTF-8 bytes that were decoded as Windows-1252/Latin-1 ("Ã©" instead of "é",
+# "â€™" instead of "’"). Remote OK's API returns some text like this.
+_CP1252_EXTRA = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ"
+_MOJIBAKE = re.compile(rf"[Â-ô][\u0080-¿{_CP1252_EXTRA}]{{1,3}}")
+
+
+def _undo_mojibake(match: re.Match) -> str:
+    chunk = match.group(0)
+    try:
+        raw = bytes(ord(c) if ord(c) < 256 else c.encode("cp1252")[0] for c in chunk)
+        return raw.decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return chunk  # not actually mojibake; leave it alone
+
+
+def fix_mojibake(text: str) -> str:
+    return _MOJIBAKE.sub(_undo_mojibake, text or "")
+
+
 def strip_html(text: str) -> str:
+    text = fix_mojibake(text)
     text = re.sub(r"<(br|/p|/li|/h\d)\s*/?>", "\n", text or "", flags=re.I)
     text = re.sub(r"<[^>]+>", " ", text)
     text = re.sub(r"[ \t ]+", " ", html.unescape(text))
@@ -70,8 +90,8 @@ def fetch_remoteok() -> list[Job]:
         jobs.append(Job(
             source="Remote OK",
             id=str(r["id"]),
-            title=r.get("position", "").strip(),
-            company=r.get("company", "").strip(),
+            title=fix_mojibake(r.get("position", "")).strip(),
+            company=fix_mojibake(r.get("company", "")).strip(),
             url=r.get("url") or f"https://remoteok.com/remote-jobs/{r['id']}",
             posted=datetime.fromisoformat(r["date"]),
             location=r.get("location") or "Remote",

@@ -56,3 +56,12 @@ def test_rank_filters_age_exclusions_and_min_score():
 
 def test_strip_html():
     assert strip_html("<p>Hello&nbsp;<b>there</b></p><p>Line 2</p>") == "Hello there\nLine 2"
+
+
+def test_fix_mojibake():
+    from radar.sources import fix_mojibake
+    assert fix_mojibake("QuÃ© es Deazy") == "Qué es Deazy"
+    assert fix_mojibake("Weâ€™re hiring â€” remote") == "We’re hiring — remote"
+    assert fix_mojibake("AboutÂ\u00a0the") == "About\u00a0the"
+    # real accented text must not be touched
+    assert fix_mojibake("Café in Zürich, 50€") == "Café in Zürich, 50€"
