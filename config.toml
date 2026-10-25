@@ -1,0 +1,47 @@
+# What counts as a good lead. Tune these and the next run re-ranks everything.
+
+max_age_days = 14      # ignore anything older
+min_score = 6          # drop weak matches
+title_bonus = 2        # a keyword in the job title counts double (penalties too)
+
+# titles that are never a fit, whatever the keywords say
+exclude_titles = ["sales", "account executive", "recruiter", "marketing", "director", "vp", "head of", "manager", "consultant", "accountant"]
+
+# keyword = weight. Title matches count double, tags count once,
+# description-only matches count half. Negative weights only apply in the title/tags.
+# (This table must stay last: TOML puts every key after [keywords] inside it.)
+[keywords]
+"flutter" = 6
+"firebase" = 5
+"react" = 4
+"react native" = 4
+"next.js" = 4
+"javascript" = 3
+"typescript" = 3
+"node.js" = 3
+"python" = 3
+"flask" = 4
+"wordpress" = 4
+"frontend" = 3
+"front end" = 3
+"full stack" = 3
+"full-stack" = 3
+"web developer" = 4
+"mobile" = 3
+"dashboard" = 2
+"erp" = 4
+"junior" = 5
+"entry level" = 5
+"mid-level" = 3
+"contract" = 2
+"freelance" = 3
+"part-time" = 2
+"senior" = -8
+"sr" = -8
+"lead" = -6
+"staff" = -5
+"principal" = -6
+"architect" = -4
+"devops" = -3
+"data scientist" = -4
+"security clearance" = -8

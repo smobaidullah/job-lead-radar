@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Lead Radar</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230f766e'/><circle cx='16' cy='16' r='9' fill='none' stroke='white' stroke-width='2'/><circle cx='16' cy='16' r='4' fill='white'/></svg>">
+<style>
+  :root { --bg:#f6f7f9; --panel:#fff; --panel-2:#f1f3f6; --text:#16191f; --muted:#687080; --border:#e3e6eb; --accent:#0f766e; --accent-soft:#e0f2f0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1216; --panel:#171b21; --panel-2:#1e232b; --text:#e8ebf0; --muted:#98a1b0; --border:#2a3039; --accent:#2dd4bf; --accent-soft:#123532; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1000px; margin:0 auto; padding:28px 16px 60px; }
+  header { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  h1 { margin:0; font-size:24px; }
+  .muted { color:var(--muted); }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  input, select { font:inherit; color:inherit; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:8px 11px; }
+  input[type=search] { flex:1; min-width:200px; }
+  label.chk { display:flex; align-items:center; gap:6px; }
+  .job { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; display:grid; grid-template-columns:52px 1fr; gap:14px; }
+  .score { background:var(--accent-soft); color:var(--accent); border-radius:8px; display:grid; place-items:center; font-weight:700; font-size:18px; height:52px; }
+  .title { font-weight:650; font-size:15px; text-decoration:none; color:var(--text); }
+  .title:hover { text-decoration:underline; }
+  .meta { color:var(--muted); font-size:13px; margin:2px 0 6px; }
+  .snip { font-size:13px; color:var(--muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .tags { margin-top:8px; display:flex; flex-wrap:wrap; gap:5px; }
+  .tag { background:var(--panel-2); border-radius:99px; padding:1px 9px; font-size:12px; }
+  .new { background:var(--accent); color:var(--panel); border-radius:99px; padding:1px 8px; font-size:11px; font-weight:700; margin-left:6px; vertical-align:2px; }
+  footer { margin-top:28px; font-size:13px; }
+  a { color:var(--accent); }
+  .empty { text-align:center; padding:40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Job Lead Radar</h1>
+      <div class="muted">{{COUNT}} remote dev leads ranked by fit · {{NEW}} new since the last run · updated {{GENERATED}}</div>
+    </div>
+    <a href="leads.xlsx">Download Excel</a>
+  </header>
+
+  <div class="bar">
+    <input type="search" id="q" placeholder="Filter by title, company or keyword">
+    <select id="src"><option value="">All sources</option></select>
+    <label class="chk"><input type="checkbox" id="onlyNew"> New only</label>
+  </div>
+
+  <div id="list"></div>
+
+  <footer class="muted">
+    Listings come from the public APIs of {{CREDITS}}. Each title links to the original post on its source site.
+    Built with Python and GitHub Actions. <a href="https://github.com/smobaidullah/job-lead-radar">Source code</a>
+  </footer>
+</div>
+
+<script>
+  const JOBS = {{DATA}};
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ago = (iso) => {
+    const d = Math.floor((Date.now() - new Date(iso)) / 86400000);
+    return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago';
+  };
+
+  [...new Set(JOBS.map((j) => j.source))].forEach((s) => $('src').insertAdjacentHTML('beforeend', `<option>${esc(s)}</option>`));
+
+  function render() {
+    const q = $('q').value.trim().toLowerCase();
+    const src = $('src').value;
+    const onlyNew = $('onlyNew').checked;
+    const rows = JOBS.filter((j) =>
+      (!src || j.source === src) && (!onlyNew || j.new) &&
+      (!q || `${j.title} ${j.company} ${j.matched.join(' ')}`.toLowerCase().includes(q)));
+    $('list').innerHTML = rows.length ? rows.map((j) => `
+      <article class="job">
+        <div class="score" title="Fit score">${j.score}</div>
+        <div>
+          <a class="title" href="${esc(j.url)}" target="_blank" rel="noopener">${esc(j.title)}</a>${j.new ? '<span class="new">NEW</span>' : ''}
+          <div class="meta">${esc(j.company)} · ${esc(j.location)}${j.salary ? ' · ' + esc(j.salary) : ''} · ${ago(j.posted)} · via ${esc(j.source)}</div>
+          <div class="snip">${esc(j.snippet)}</div>
+          <div class="tags">${j.matched.map((m) => `<span class="tag">${esc(m)}</span>`).join('')}</div>
+        </div>
+      </article>`).join('') : '<p class="muted empty">No leads match that filter.</p>';
+  }
+  ['q', 'src', 'onlyNew'].forEach((id) => $(id).addEventListener('input', render));
+  render();
+</script>
+</body>
+</html>
